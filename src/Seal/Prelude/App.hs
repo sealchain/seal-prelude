@@ -4,4 +4,5 @@ module Seal.Prelude.App (
 ) where
 
 import Seal.Prelude
-import RIO (SimpleApp, runSimpleApp)
+import RIO ( SimpleApp, runSimpleApp
+           , logOptionsHandle, withLogFunc)

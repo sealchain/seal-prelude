@@ -39,7 +39,8 @@ import Data.Foldable
 import Data.List (intersect, nub)
 import Data.String
 import Data.Tuple
-import RIO (Show(..), RIO(..), runRIO, liftRIO, mapLeft)
+import RIO (Show(..), RIO(..), runRIO, liftRIO, mapLeft
+           ,HasLogFunc(..), LogFunc, display, displayShow, logInfo)
 import UnliftIO 
 
 
