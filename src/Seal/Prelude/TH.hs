@@ -284,3 +284,7 @@ oldQ .< snippetQ = do
   case snippet of
       Overwrite news -> return $ old <> news
       Merge news -> return $ old <> news
+
+
+instance Semigroup DecsQ where
+  q1 <> q2 = (++) <$> q1 <*> q2
