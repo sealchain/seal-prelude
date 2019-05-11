@@ -40,7 +40,8 @@ import Data.List (intersect, nub)
 import Data.String
 import Data.Tuple
 import RIO (Show(..), RIO(..), runRIO, liftRIO, mapLeft
-           ,HasLogFunc(..), LogFunc, display, displayShow, logInfo)
+           ,HasLogFunc(..), LogFunc, display, displayShow, logInfo
+           ,writeFileUtf8)
 import UnliftIO 
 
 

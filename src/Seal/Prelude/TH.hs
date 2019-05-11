@@ -18,6 +18,7 @@ import Control.Monad
 import GHC.Generics 
 import Data.List
 import System.IO.Unsafe
+import Data.Generics.Uniplate.Data
 
 -- | Pretty print spliced code
 pprintQ :: Ppr a => Q a -> IO ()
@@ -282,9 +283,59 @@ oldQ .< snippetQ = do
   old <- oldQ
   snippet <- snippetQ
   case snippet of
-      Overwrite news -> return $ old <> news
-      Merge news -> return $ old <> news
+      Overwrite news -> return $ foldl mergeD old news
+      Merge news -> return $ foldl mergeD old news
 
 
 instance Semigroup DecsQ where
   q1 <> q2 = (++) <$> q1 <*> q2
+
+-- TH生成的name会自动增加数字后缀，去掉后缀
+nameOri :: Name -> String
+nameOri = takeWhile (/= '_') . nameBase
+
+class Eq_ a where (===) :: a -> a -> Bool
+
+instance Eq_ Name where
+  a === b = a == b || nameOri a == nameOri b
+
+instance Eq_ Type where
+  (ConT a) === (ConT b) = a === b
+  (VarT a) === (VarT b) = a === b
+  (AppT a b) === (AppT m n) = a === m && b === n
+  a === b = a == b
+
+-- 合并代码 old -> new 
+mergeD :: [Dec] -> Dec -> [Dec]
+mergeD ds (DataD ctx n tvars mk cs dcs) = fmap go ds
+  where
+    go d@(DataD ctx' n' tvars' mk' cs' dcs')
+      | n === n' = validDec $ DataD ctx n tvars mk (cs' <> cs) (dcs <> dcs')
+      | otherwise = d
+    go d = d
+
+mergeD ds (FunD n cs) = fmap go ds
+  where
+    go d@(FunD n' cs')
+      | n === n' = FunD n (cs' <> cs)
+      | otherwise = d
+    go d = d
+
+mergeD ds (InstanceD mo ctx t ids) = fmap go ds
+  where
+    go d@(InstanceD mo' ctx' t' ids')
+      | t === t' = InstanceD mo ctx t $ foldl mergeD ids ids'
+      | otherwise = d
+    go d = d
+
+mergeD ds _ = ds
+
+-- 
+validDec :: Dec -> Dec
+validDec d@(DataD _ _ [PlainTV tv] _ _ _)= transformBi changeName d
+  where
+    changeName :: Name -> Name
+    changeName n
+      | n === tv = tv
+      | otherwise = n
+validDec d = d
