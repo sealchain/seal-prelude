@@ -17,6 +17,7 @@ import Debug.Trace
 import Control.Monad
 import GHC.Generics 
 import Data.List
+import Data.Maybe
 import System.IO.Unsafe
 import Data.Generics.Uniplate.Data
 
@@ -269,6 +270,7 @@ getCompositeType (ForallC tvbs cxt con) = getCompositeType con
 data Snippet 
   = Overwrite [Dec]
   | Merge [Dec]
+  | RemoveValue [String]
 
 overwrite :: DecsQ -> Q Snippet
 overwrite oldQ = Overwrite <$> oldQ
@@ -276,6 +278,8 @@ overwrite oldQ = Overwrite <$> oldQ
 merge :: DecsQ -> Q Snippet
 merge q = Merge <$> q
 
+remove :: [String] -> Q Snippet
+remove ns = return $ RemoveValue ns
 
 infixl 1 .<
 (.<) :: DecsQ -> Q Snippet -> DecsQ
@@ -285,6 +289,7 @@ oldQ .< snippetQ = do
   case snippet of
       Overwrite news -> return $ validDecs $ foldl mergeD old news
       Merge news -> return $ validDecs $ foldl mergeD old news
+      RemoveValue ns -> return $ foldl removeD old ns
 
 
 instance Semigroup DecsQ where
@@ -330,6 +335,21 @@ mergeD ds (InstanceD mo ctx t ids) = fmap go ds
 
 mergeD ds _ = ds
 
+removeD :: [Dec] -> String -> [Dec]
+removeD decs s = transformBi (changeName n') $ mapMaybe f decs
+  where
+    n' = mkName s
+    f d@(FunD n _)
+      | n === n' = Nothing
+      | otherwise = Just d
+    f d@(ValD (VarP n) _ _)
+      | n === n' = Nothing
+      | otherwise = Just d
+    f d@(SigD n _)
+      | n === n' = Nothing
+      | otherwise = Just d
+    f d = Just d
+
 -- 
 changeName :: Name -> Name -> Name
 changeName tv n
@@ -346,3 +366,15 @@ validDecs decs = foldl f decs names
     names =  [ n | DataD _ n _ _ _ _ <- decs]
           -- <> [ n | SigD n _ <- decs]
     f desc n = transformBi (changeName n) decs
+
+
+
+withTypeName :: String -> (Name -> Q a) -> Q a
+withTypeName n f = lookupTypeName n >>= \case
+  Just nn -> f nn
+  Nothing -> fail $ "can not find type name: " <> n
+
+withValueName :: String -> (Name -> Q a) -> Q a
+withValueName n f = lookupValueName n >>= \case
+  Just nn -> f nn
+  Nothing -> fail $ "can not find value name: " <> n
