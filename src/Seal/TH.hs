@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seal.Prelude.TH (
+module Seal.TH (
     module Language.Haskell.TH,
     module Language.Haskell.TH.Syntax,
     module Language.Haskell.TH.Quote,
-    module Seal.Prelude.TH,
+    module Seal.TH,
 ) where
 
 import Prelude 
@@ -283,8 +283,8 @@ oldQ .< snippetQ = do
   old <- oldQ
   snippet <- snippetQ
   case snippet of
-      Overwrite news -> return $ foldl mergeD old news
-      Merge news -> return $ foldl mergeD old news
+      Overwrite news -> return $ validDecs $ foldl mergeD old news
+      Merge news -> return $ validDecs $ foldl mergeD old news
 
 
 instance Semigroup DecsQ where
@@ -310,14 +310,14 @@ mergeD :: [Dec] -> Dec -> [Dec]
 mergeD ds (DataD ctx n tvars mk cs dcs) = fmap go ds
   where
     go d@(DataD ctx' n' tvars' mk' cs' dcs')
-      | n === n' = validDec $ DataD ctx n tvars mk (cs' <> cs) (dcs <> dcs')
+      | n === n' = validDec $ DataD ctx n' tvars mk (cs' <> cs) (dcs <> dcs')
       | otherwise = d
     go d = d
 
 mergeD ds (FunD n cs) = fmap go ds
   where
     go d@(FunD n' cs')
-      | n === n' = FunD n (cs' <> cs)
+      | n === n' = FunD n' (cs' <> cs)
       | otherwise = d
     go d = d
 
@@ -331,11 +331,18 @@ mergeD ds (InstanceD mo ctx t ids) = fmap go ds
 mergeD ds _ = ds
 
 -- 
+changeName :: Name -> Name -> Name
+changeName tv n
+  | n === tv = tv
+  | otherwise = n
+
 validDec :: Dec -> Dec
-validDec d@(DataD _ _ [PlainTV tv] _ _ _)= transformBi changeName d
-  where
-    changeName :: Name -> Name
-    changeName n
-      | n === tv = tv
-      | otherwise = n
+validDec d@(DataD _ _ [PlainTV tv] _ _ _)= transformBi (changeName tv) d
 validDec d = d
+
+validDecs :: [Dec] -> [Dec]
+validDecs decs = foldl f decs names
+  where
+    names =  [ n | DataD _ n _ _ _ _ <- decs]
+          -- <> [ n | SigD n _ <- decs]
+    f desc n = transformBi (changeName n) decs
