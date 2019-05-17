@@ -30,7 +30,7 @@ import Universum.Monad as Universum
 import Universum.Monoid as Universum
 import Universum.Nub as Universum
 import Universum.Print as Universum
-import Universum.String (Text, encodeUtf8, decodeUtf8, ToString(..), ToText(..))
+import Universum.String (ConvertUtf8(..), Text, ToString(..), ToText(..))
 
 import Control.Lens hiding (List, op, parts, uncons)
 import Data.Char
@@ -39,7 +39,7 @@ import Data.Foldable
 import Data.List (intersect, nub)
 import Data.String
 import Data.Tuple
-import RIO (Show(..), RIO(..), runRIO, liftRIO, mapLeft
+import RIO (ByteString, Show(..), RIO(..), runRIO, liftRIO, mapLeft
            ,HasLogFunc(..), LogFunc, display, displayShow, logInfo
            ,writeFileUtf8)
 import UnliftIO 
